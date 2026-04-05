@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -7,57 +9,133 @@ namespace sysprogramming
 {
     public partial class Form1 : Form
     {
+        private TreeView treeView1;
+        private Button btnShow;
+        private Button btnExit;
         public Form1()
         {
-            InitializeComponent();
+            InitializeControls();
         }
-        Button btnStart = new Button() { Text = "Start", Top = 10, Left = 10 };
-        Button btnCancel = new Button() { Text = "Cancel", Top = 40, Left = 10 };
-        Label lblResult = new Label() { Text = "", Top = 70, Left = 10, Width = 200 };
-        ProgressBar progressBar1 = new ProgressBar() { Top = 100, Left = 10, Width = 200 };
-        CancellationTokenSource cts;
-        private async void btnStart_Click(object sender, EventArgs e)
+
+
+        private void InitializeControls()
         {
-            cts = new CancellationTokenSource();
-            progressBar1.Value = 0;
-            lblResult.Text = "Running...";
+            this.Text = "Динамічна ідентифікація типів";
+            this.Size = new System.Drawing.Size(600, 400);
 
-            var progress = new Progress<int>(value =>
-            {
-                progressBar1.Value = value;
-                lblResult.Text = $"Progress: {value}%";
-            });
+            treeView1 = new TreeView();
+            treeView1.Dock = DockStyle.Top;
+            treeView1.Height = 300;
+            this.Controls.Add(treeView1);
 
-            try
+            FlowLayoutPanel panel = new FlowLayoutPanel();
+            panel.Dock = DockStyle.Bottom;
+            panel.Height = 50;
+            this.Controls.Add(panel);
+
+            btnShow = new Button();
+            btnShow.Text = "Показати властивості";
+            btnShow.Click += BtnShow_Click;
+            panel.Controls.Add(btnShow);
+
+            btnExit = new Button();
+            btnExit.Text = "Вихід";
+            btnExit.Click += (s, e) => this.Close();
+            panel.Controls.Add(btnExit);
+        }
+
+        private void BtnShow_Click(object sender, EventArgs e)
+        {
+            treeView1.Nodes.Clear();
+            Doctor doc = new Doctor("Олександр", 35, "Терапевт", new List<string> { "Хірургія", "Терапія" });
+            ShowProperties(doc);
+        }
+
+        private void ShowProperties(object obj)
+        {
+            Type t = obj.GetType();
+            TreeNode root = new TreeNode(t.Name);
+            PropertyInfo[] props = t.GetProperties();
+
+            foreach (var p in props)
             {
-                int result = await LongRunningTask(100, progress, cts.Token);
-                lblResult.Text = $"Done! Result: {result}";
+                object value = p.GetValue(obj, null);
+                string display = value is System.Collections.IEnumerable && !(value is string)
+                    ? string.Join(", ", (System.Collections.IEnumerable)value)
+                    : value?.ToString();
+                root.Nodes.Add($"{p.PropertyType.Name} {p.Name} = {display}");
             }
-            catch (OperationCanceledException)
-            {
-                lblResult.Text = "Canceled";
-            }
-        }
 
-        private void btnCancel_Click(object sender, EventArgs e)
-        {
-            cts?.Cancel();
-        }
-
-        private Task<int> LongRunningTask(int count, IProgress<int> progress, CancellationToken token)
-        {
-            return Task.Run(() =>
+            TreeNode methodsNode = new TreeNode("Методи");
+            MethodInfo[] methods = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            foreach (var m in methods)
             {
-                int sum = 0;
-                for (int i = 1; i <= count; i++)
+                string signature = m.Name + "(";
+                ParameterInfo[] pars = m.GetParameters();
+                for (int i = 0; i < pars.Length; i++)
                 {
-                    token.ThrowIfCancellationRequested();
-                    sum += i;
-                    progress.Report(i);
-                    Thread.Sleep(50);
+                    signature += $"{pars[i].ParameterType.Name} {pars[i].Name}";
+                    if (i < pars.Length - 1) signature += ", ";
                 }
-                return sum;
-            }, token);
+                signature += $") : {m.ReturnType.Name}";
+                methodsNode.Nodes.Add(signature);
+            }
+            root.Nodes.Add(methodsNode);
+
+            TreeNode ctorsNode = new TreeNode("Конструктори");
+            ConstructorInfo[] ctors = t.GetConstructors();
+            foreach (var c in ctors)
+            {
+                string signature = t.Name + "(";
+                ParameterInfo[] pars = c.GetParameters();
+                for (int i = 0; i < pars.Length; i++)
+                {
+                    signature += $"{pars[i].ParameterType.Name} {pars[i].Name}";
+                    if (i < pars.Length - 1) signature += ", ";
+                }
+                signature += ")";
+                ctorsNode.Nodes.Add(signature);
+            }
+            root.Nodes.Add(ctorsNode);
+
+            treeView1.Nodes.Add(root);
+            root.Expand();
+        }
+  
+    }
+
+
+    public class Doctor
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public string Specialty { get; set; }       
+        public List<string> Skills { get; set; } 
+        public Doctor() { }
+
+        public Doctor(string name, int age, string specialty, List<string> skills)
+        {
+            Name = name;
+            Age = age;
+            Specialty = specialty;
+            Skills = skills;
+        }
+
+        public void ShowInfo()
+        {
+            MessageBox.Show($"{Name}, {Age} років, спеціальність: {Specialty}");
+        }
+
+        public int AddExperience(int years)
+        {
+            Age += years;
+            return Age;
+        }
+
+        public string GetSummary()
+        {
+            return $"{Name}, {Age} років, {Specialty}, навички: {string.Join(", ", Skills)}";
         }
     }
+
 }
