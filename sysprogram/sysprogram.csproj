@@ -53,13 +53,13 @@
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ConsoleApp1\loopbreak.csproj">
-      <Project>{93f5e651-830b-42a0-9ecc-f08051a0b394}</Project>
-      <Name>loopbreak</Name>
-    </ProjectReference>
     <ProjectReference Include="..\lambdaloop\lambdaloop.csproj">
       <Project>{1da0a8f0-70b2-4d90-b82a-9d4b79f0ade2}</Project>
       <Name>lambdaloop</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\loopbreak\loopbreak.csproj">
+      <Project>{93f5e651-830b-42a0-9ecc-f08051a0b394}</Project>
+      <Name>loopbreak</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
