@@ -1,0 +1,7 @@
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\bin\Debug\lambdaloop.exe.config
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\bin\Debug\lambdaloop.exe
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\bin\Debug\lambdaloop.pdb
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\obj\Debug\lambdaloop.csproj.AssemblyReference.cache
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\obj\Debug\lambdaloop.csproj.CoreCompileInputs.cache
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\obj\Debug\lambdaloop.exe
+C:\Users\dendo\OneDrive\Рабочий стол\МІТ\МІТ-41\Системне програмування\lambdaloop\obj\Debug\lambdaloop.pdb

@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{1847E5AE-4093-4158-8F59-324526B998DE}</ProjectGuid>
+    <ProjectGuid>{1DA0A8F0-70B2-4D90-B82A-9D4B79F0ADE2}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>sysprogram</RootNamespace>
-    <AssemblyName>sysprogram</AssemblyName>
+    <RootNamespace>lambdaloop</RootNamespace>
+    <AssemblyName>lambdaloop</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
