@@ -1,141 +1,251 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Input;
 
 namespace sysprogramming
 {
     public partial class Form1 : Form
     {
         private TreeView treeView1;
-        private Button btnShow;
-        private Button btnExit;
+        private ListView listView1;
+        private Button btnRename, btnDelete, btnCreateFolder, btnCopy, btnSearch;
         public Form1()
         {
-            InitializeControls();
+            InitializeComponent();
+            LoadDrives();
         }
 
-
-        private void InitializeControls()
-        {
-            this.Text = "Динамічна ідентифікація типів";
-            this.Size = new System.Drawing.Size(600, 400);
-
-            treeView1 = new TreeView();
-            treeView1.Dock = DockStyle.Top;
-            treeView1.Height = 300;
-            this.Controls.Add(treeView1);
-
-            FlowLayoutPanel panel = new FlowLayoutPanel();
-            panel.Dock = DockStyle.Bottom;
-            panel.Height = 50;
-            this.Controls.Add(panel);
-
-            btnShow = new Button();
-            btnShow.Text = "Показати властивості";
-            btnShow.Click += BtnShow_Click;
-            panel.Controls.Add(btnShow);
-
-            btnExit = new Button();
-            btnExit.Text = "Вихід";
-            btnExit.Click += (s, e) => this.Close();
-            panel.Controls.Add(btnExit);
-        }
-
-        private void BtnShow_Click(object sender, EventArgs e)
+        private void LoadDrives()
         {
             treeView1.Nodes.Clear();
-            Doctor doc = new Doctor("Олександр", 35, "Терапевт", new List<string> { "Хірургія", "Терапія" });
-            ShowProperties(doc);
+            foreach (string drive in Directory.GetLogicalDrives())
+            {
+                TreeNode node = new TreeNode(drive) { Tag = drive };
+                treeView1.Nodes.Add(node);
+                LoadSubDirectories(node);
+            }
         }
 
-        private void ShowProperties(object obj)
+        private void LoadSubDirectories(TreeNode node, int depth = 2)
         {
-            Type t = obj.GetType();
-            TreeNode root = new TreeNode(t.Name);
-            PropertyInfo[] props = t.GetProperties();
+            if (depth == 0) return;
 
-            foreach (var p in props)
+            string path = node.Tag.ToString();
+            try
             {
-                object value = p.GetValue(obj, null);
-                string display = value is System.Collections.IEnumerable && !(value is string)
-                    ? string.Join(", ", (System.Collections.IEnumerable)value)
-                    : value?.ToString();
-                root.Nodes.Add($"{p.PropertyType.Name} {p.Name} = {display}");
-            }
-
-            TreeNode methodsNode = new TreeNode("Методи");
-            MethodInfo[] methods = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-            foreach (var m in methods)
-            {
-                string signature = m.Name + "(";
-                ParameterInfo[] pars = m.GetParameters();
-                for (int i = 0; i < pars.Length; i++)
+                foreach (var dir in Directory.GetDirectories(path))
                 {
-                    signature += $"{pars[i].ParameterType.Name} {pars[i].Name}";
-                    if (i < pars.Length - 1) signature += ", ";
+                    TreeNode subNode = new TreeNode(Path.GetFileName(dir)) { Tag = dir };
+                    node.Nodes.Add(subNode);
+                    LoadSubDirectories(subNode, depth - 1);
                 }
-                signature += $") : {m.ReturnType.Name}";
-                methodsNode.Nodes.Add(signature);
             }
-            root.Nodes.Add(methodsNode);
+            catch { }
+        }
 
-            TreeNode ctorsNode = new TreeNode("Конструктори");
-            ConstructorInfo[] ctors = t.GetConstructors();
-            foreach (var c in ctors)
+        private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            listView1.Items.Clear();
+            string path = e.Node.Tag.ToString();
+            try
             {
-                string signature = t.Name + "(";
-                ParameterInfo[] pars = c.GetParameters();
-                for (int i = 0; i < pars.Length; i++)
+                foreach (var dir in Directory.GetDirectories(path))
                 {
-                    signature += $"{pars[i].ParameterType.Name} {pars[i].Name}";
-                    if (i < pars.Length - 1) signature += ", ";
+                    ListViewItem item = new ListViewItem(Path.GetFileName(dir));
+                    item.SubItems.Add("<DIR>");
+                    listView1.Items.Add(item);
                 }
-                signature += ")";
-                ctorsNode.Nodes.Add(signature);
+                foreach (var file in Directory.GetFiles(path))
+                {
+                    FileInfo fi = new FileInfo(file);
+                    ListViewItem item = new ListViewItem(fi.Name);
+                    item.SubItems.Add(fi.Length.ToString());
+                    listView1.Items.Add(item);
+                }
             }
-            root.Nodes.Add(ctorsNode);
-
-            treeView1.Nodes.Add(root);
-            root.Expand();
+            catch { }
         }
-  
+
+        private void btnSearch_Click(object sender, EventArgs e)
+        {
+            string fileName = ShowInputDialog("Enter file name to search:");
+            if (string.IsNullOrEmpty(fileName)) return;
+
+            listView1.Items.Clear();
+            if (treeView1.SelectedNode == null)
+            {
+                MessageBox.Show("Select a folder to start search");
+                return;
+            }
+            string startPath = treeView1.SelectedNode.Tag.ToString();
+            SearchFilesRecursive(startPath, fileName);
+        }
+
+        private void SearchFilesRecursive(string path, string fileName)
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(path))
+                {
+                    if (Path.GetFileName(file).IndexOf(fileName, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        FileInfo fi = new FileInfo(file);
+                        ListViewItem item = new ListViewItem(fi.FullName);
+                        item.SubItems.Add(fi.Length.ToString());
+                        listView1.Items.Add(item);
+                    }
+                }
+
+                foreach (var dir in Directory.GetDirectories(path))
+                {
+                    SearchFilesRecursive(dir, fileName);
+                }
+            }
+            catch (UnauthorizedAccessException) { }
+            catch (IOException) { }
+        }
+
+        private void treeView1_BeforeExpand(object sender, TreeViewCancelEventArgs e)
+        {
+            if (e.Node.Nodes.Count == 1 && e.Node.Nodes[0].Text == "...")
+            {
+                e.Node.Nodes.Clear();
+                string path = e.Node.Tag.ToString();
+                try
+                {
+                    foreach (var dir in Directory.GetDirectories(path))
+                    {
+                        TreeNode subNode = new TreeNode(Path.GetFileName(dir)) { Tag = dir };
+                        if (Directory.GetDirectories(dir).Length > 0)
+                            subNode.Nodes.Add("...");
+                        e.Node.Nodes.Add(subNode);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void btnCreateFolder_Click(object sender, EventArgs e)
+        {
+            if (treeView1.SelectedNode == null) return;
+            string path = treeView1.SelectedNode.Tag.ToString();
+            string newFolder = Path.Combine(path, "NewFolder");
+            try
+            {
+                Directory.CreateDirectory(newFolder);
+                treeView1.SelectedNode.Nodes.Add(new TreeNode("NewFolder") { Tag = newFolder });
+                treeView1.SelectedNode.Expand();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btnDelete_Click(object sender, EventArgs e)
+        {
+            if (treeView1.SelectedNode == null) return;
+            string path = treeView1.SelectedNode.Tag.ToString();
+            try
+            {
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+                else if (File.Exists(path))
+                    File.Delete(path);
+                treeView1.SelectedNode.Remove();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btnRename_Click(object sender, EventArgs e)
+        {
+            if (treeView1.SelectedNode == null) return;
+            string oldPath = treeView1.SelectedNode.Tag.ToString();
+            string parent = Path.GetDirectoryName(oldPath);
+            string newName = ShowInputDialog("Enter new name:");
+            if (string.IsNullOrEmpty(newName)) return;
+            string newPath = Path.Combine(parent, newName);
+            try
+            {
+                if (Directory.Exists(oldPath))
+                    Directory.Move(oldPath, newPath);
+                else if (File.Exists(oldPath))
+                    File.Move(oldPath, newPath);
+                treeView1.SelectedNode.Text = newName;
+                treeView1.SelectedNode.Tag = newPath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void btnCopy_Click(object sender, EventArgs e)
+        {
+            if (treeView1.SelectedNode == null) return;
+            string source = treeView1.SelectedNode.Tag.ToString();
+            string dest = ShowInputDialog("Enter destination path:");
+            if (string.IsNullOrEmpty(dest)) return;
+            if (!Path.IsPathRooted(dest))
+                dest = Path.Combine(@"C:\", dest);
+            try
+            {
+                if (Directory.Exists(source))
+                    CopyDirectory(source, dest);
+                else if (File.Exists(source))
+                    File.Copy(source, dest, true);
+                MessageBox.Show("Copied!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void CopyDirectory(string sourceDir, string destDir)
+        {
+            if (!Directory.Exists(destDir))
+                Directory.CreateDirectory(destDir);
+
+            foreach (var file in Directory.GetFiles(sourceDir))
+            {
+                string destFile = Path.Combine(destDir, Path.GetFileName(file));
+                File.Copy(file, destFile, true);
+            }
+
+            foreach (var dir in Directory.GetDirectories(sourceDir))
+            {
+                string destSubDir = Path.Combine(destDir, Path.GetFileName(dir));
+                CopyDirectory(dir, destSubDir);
+            }
+        }
+
+        private string ShowInputDialog(string prompt)
+        {
+            Form promptForm = new Form()
+            {
+                Width = 400,
+                Height = 150,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Input",
+                StartPosition = FormStartPosition.CenterScreen
+            };
+            Label textLabel = new Label() { Left = 20, Top = 20, Text = prompt, AutoSize = true };
+            TextBox inputBox = new TextBox() { Left = 20, Top = 50, Width = 340 };
+            Button confirmation = new Button() { Text = "OK", Left = 280, Width = 80, Top = 80, DialogResult = DialogResult.OK };
+            promptForm.Controls.Add(textLabel);
+            promptForm.Controls.Add(inputBox);
+            promptForm.Controls.Add(confirmation);
+            promptForm.AcceptButton = confirmation;
+            return promptForm.ShowDialog() == DialogResult.OK ? inputBox.Text : "";
+        }
     }
-
-
-    public class Doctor
-    {
-        public string Name { get; set; }
-        public int Age { get; set; }
-        public string Specialty { get; set; }       
-        public List<string> Skills { get; set; } 
-        public Doctor() { }
-
-        public Doctor(string name, int age, string specialty, List<string> skills)
-        {
-            Name = name;
-            Age = age;
-            Specialty = specialty;
-            Skills = skills;
-        }
-
-        public void ShowInfo()
-        {
-            MessageBox.Show($"{Name}, {Age} років, спеціальність: {Specialty}");
-        }
-
-        public int AddExperience(int years)
-        {
-            Age += years;
-            return Age;
-        }
-
-        public string GetSummary()
-        {
-            return $"{Name}, {Age} років, {Specialty}, навички: {string.Join(", ", Skills)}";
-        }
-    }
-
 }
